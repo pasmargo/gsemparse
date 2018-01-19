@@ -1,17 +1,23 @@
 
 from keras import backend as K
 from keras.layers import Embedding, Flatten, UpSampling1D, Reshape
-from keras.layers import Dense, Input, Dropout, MaxPooling1D, Conv1D, GlobalMaxPool1D
-from keras.layers import LSTM, Lambda, Bidirectional, concatenate, BatchNormalization
+from keras.layers import Dense, Input, Dropout, MaxPooling1D, Conv1D
+from keras.layers import Lambda, concatenate
 from keras.layers import TimeDistributed
+from keras.layers import Add
 from keras.layers import Subtract
 from keras.layers import Dot
+from keras.losses import mean_squared_error
 from keras.models import Model
 from keras.regularizers import l2
 
 from preprocessing import char_indices
 
-def make_siamese_model(input1, input2, encoder, l2_strength=1e-3, dense_dim=128):
+def make_label_input(maxlen):
+    label_input = Input(shape=(maxlen,), dtype='int32')
+    return label_input
+
+def make_siamese_model(input1, input2, encoder, l2_strength=1e-3, dense_dim=128, drop=0.3):
     in1 = encoder(input1)
     in2 = encoder(input2)
     in1 = Dense(
@@ -20,18 +26,20 @@ def make_siamese_model(input1, input2, encoder, l2_strength=1e-3, dense_dim=128)
         bias_regularizer=l2(l2_strength),
         activation='relu',
         name='siam_dense1_src')(in1)
+    in1 = Dropout(drop, name='siam_drop1_src')(in1)
     in2 = Dense(
         dense_dim,
         kernel_regularizer=l2(l2_strength),
         bias_regularizer=l2(l2_strength),
         activation='relu',
         name='siam_dense1_trg')(in2)
+    in2 = Dropout(drop, name='siam_drop2_src')(in2)
     simil = Dot(
         axes=(1,1),
         normalize=True,
         name='siam_cos_simil')([in1, in2])
     siamese = Model(
-        inputs=[in1_input, in2_input],
+        inputs=[input1, input2],
         outputs=[simil],
         name='siamese_simil')
     return siamese
@@ -46,21 +54,33 @@ def loss_i1i1_func(args):
 
 def loss_i1i1_i1i2s_func(args):
     """
-    In this loss function, we apply a different Dense layer
-    to each encoded image before computing its cosine distance.
-    This is an attempt to correct the fact that the smallest
-    cosine distance of two encoded (different) images is when
-    the encoder produces zero values. However, the parameter
-    values that cause such situation destroy the information
-    necessary to reconstruct the image in the auto-encoder regime,
-    which is a conflicting loss factor.
+    In this loss function, we use the cosine similarity (in negative form)
+    as part of the loss.
     """
-    auto_img1, img1, cosine_simil = args
-    auto_img1 = Flatten()(auto_img1)
-    img1 = Flatten()(img1)
-    auto_loss = K.mean(K.square(auto_img1 - img1), axis=-1)
+    auto_in1, in1, cosine_simil = args
+    auto_in1 = Flatten()(auto_in1)
+    in1 = Flatten()(in1)
+    auto_loss = K.mean(K.square(auto_in1 - in1), axis=-1)
     cosine_simil = K.mean(cosine_simil, axis=-1)
     loss = Subtract()([Reshape((1,))(auto_loss), Reshape((1,))(cosine_simil)])
+    print('Loss shape: {0}'.format(loss.shape))
+    return loss
+
+def loss_i1i1_i1i2s_i1j1s_func(args):
+    """
+    In this loss function, we use the cosine similarity (in negative form)
+    as part of the loss and the cosine similarity of negative samples
+    (in positive form) also as part of the loss. This is inspired by the
+    Noise Contrastive Estimation.
+    """
+    auto_in1, in1, cosine_simil_pos, cosine_simil_neg = args
+    auto_in1 = Flatten()(auto_in1)
+    in1 = Flatten()(in1)
+    auto_loss = K.mean(K.square(auto_in1 - in1), axis=-1)
+    cosine_simil_pos = K.mean(cosine_simil_pos, axis=-1)
+    cosine_simil_neg = K.mean(cosine_simil_neg, axis=-1)
+    loss = Subtract()([Reshape((1,))(auto_loss), Reshape((1,))(cosine_simil_pos)])
+    loss = Add()([loss, Reshape((1,))(cosine_simil_neg)])
     print('Loss shape: {0}'.format(loss.shape))
     return loss
 
@@ -74,7 +94,7 @@ def make_encoder(
     """
     Make the output of an encoder (but does not build the model).
     """
-    entity = Input(shape=(maxlen,), dtype='int32')
+    entity = make_label_input(maxlen)
 
     char_emb = Embedding(
         input_dim=len(char_indices),

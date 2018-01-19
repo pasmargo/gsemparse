@@ -1,8 +1,14 @@
 
+import argparse
 import codecs
 from collections import Counter
 import json
 import logging
+import numpy as np
+import random
+import re
+import sys
+import os
 
 from keras.models import Model
 from keras.layers import Embedding, Flatten, UpSampling1D, Reshape
@@ -15,30 +21,29 @@ import keras.backend as K
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger, TensorBoard
 import tensorflow as tf
 
-import numpy as np
-import random
-import re
-import sys
-import os
-
-from models import make_encoder
 from models import make_decoder
+from models import make_encoder
+from models import make_label_input
 from preprocessing import char_indices
 from preprocessing import labels_to_matrix
 from preprocessing import load_labels
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_type", nargs='?', default="sys",
-        choices=["base", "sys"])
-    parser.add_argument("--loss_type", nargs='?', default="i1i1-i1i2",
-        choices=["i1i1-i1i2", "i1i1-i1i2s", "i1i1", "i1i2"])
-    parser.add_argument("--batch_size", nargs='?', type=int, default=40)
+    parser.add_argument("--model_type", nargs='?', default="char-cnn",
+        choices=["char-cnn", "char-lstm"])
+    parser.add_argument("--loss_type", nargs='?', default="i1i1",
+        choices=["i1i1", "i1i1-i1i2s", "i1i1-i1i2s-i1j1s"])
+    parser.add_argument("--ntrain", nargs='?', type=int, default=1000000)
+    parser.add_argument("--maxlen", nargs='?', type=int, default=16,
+        help="Maximum length of labels. Longer labels are cropped.")
+    parser.add_argument("--char_emb_size", nargs='?', type=int, default=128)
+    parser.add_argument("--batch_size", nargs='?', type=int, default=500)
     parser.add_argument("--batch_size_val", nargs='?', type=int, default=150)
     parser.add_argument("--epochs", nargs='?', type=int, default=200)
     parser.add_argument("--steps_per_epoch", nargs='?', type=int, default=100)
     parser.add_argument("--validation_steps", nargs='?', type=int, default=1)
-    parser.add_argument("--patience", nargs='?', type=int, default=6)
+    parser.add_argument("--patience", nargs='?', type=int, default=5)
     parser.add_argument("--batch_normalization", nargs='?', type=bool, default=False)
     parser.add_argument("--reduce_params", dest="reduce_params", action="store_true")
     parser.add_argument("--no_reduce_params", dest="reduce_params", action="store_false")
@@ -48,19 +53,13 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
-    model_basename = 'vgg16_{0}_reduce{1}_{2}{3}'.format(
-        args.model_type, str(args.reduce_params), args.loss_type, args.exp_suffix)
-    model_name = model_basename + '_multiobj'
+    model_basename = '{0}_linkent_{1}{2}'.format(
+        args.model_type, args.loss_type, args.exp_suffix)
+    model_name = model_basename
 
-    ntrain = 1000000
-    maxlen = 16
-    char_emb_size = 128
-    batch_size = 10000
-    max_epochs = 100
-
-    labels = load_labels('dbpedia_ents.text.jsonl', ntrain=ntrain)
+    labels = load_labels('data/dbpedia_ents.text.jsonl', ntrain=args.ntrain)
     labels_len = [len(label) for label in labels]
-    logging.info('Label stats. min, avg, median, max: {0}, {1}, {2}, {3}'.format(
+    logging.info('Label length stats. min, avg, median, max: {0}, {1}, {2}, {3}'.format(
         np.min(labels_len), np.mean(labels_len), np.median(labels_len), np.max(labels_len)))
     logging.info('Label samples: {0}'.format(random.sample(labels, 10)))
     logging.info('Using {0} characters: {1}'.format(len(char_indices), ''.join(list(char_indices.keys()))))
@@ -69,7 +68,7 @@ if __name__ == '__main__':
     logging.info('Most common discarded chars: {0}'.format(
         char_counter.most_common(10)))
 
-    X = labels_to_matrix(labels, maxlen)
+    X = labels_to_matrix(labels, args.maxlen)
     print('Sample X:\n{}'.format(X[:2, :]))
     
     # shuffle
@@ -77,18 +76,18 @@ if __name__ == '__main__':
     np.random.shuffle(ids)
     X = X[ids]
     
-    split = int(ntrain * .8)
+    split = int(args.ntrain * .8)
     X_train = X[:split]
     X_test = X[split:]
     
-    num_filters = (char_emb_size, char_emb_size * 2, char_emb_size * 4)
+    num_filters = (args.char_emb_size, args.char_emb_size * 2, args.char_emb_size * 4)
     filter_lengths = (3, 3, 3)
     subsamples = (1, 1, 1)
     pool_lengths = (2, 2, 2)
     
     inputs, outputs, char_emb_x = make_encoder(
-        maxlen,
-        char_emb_size,
+        args.maxlen,
+        args.char_emb_size,
         num_filters=num_filters,
         filter_lengths=filter_lengths,
         subsamples=subsamples,
@@ -108,10 +107,8 @@ if __name__ == '__main__':
     autoencoder = Model(inputs=inputs, outputs=outputs)
     autoencoder.summary()
     
-    img1_input = Input(shape=(224, 224, 3))
-    img2_input = Input(shape=(224, 224, 3))
-    
     loss_out = None
+    inputs = []
     if args.loss_type == 'i1i1-i1i2':
         loss_out = Lambda(
             loss_i1i1_i1i2_func,
@@ -125,30 +122,54 @@ if __name__ == '__main__':
             inputs=[img1_input, img2_input],
             outputs=[loss_out],
             name=model_name)
+    elif args.loss_type == 'i1i1-i1i2s-i1j1s':
+        from models import make_siamese_model
+        from models import loss_i1i1_i1i2s_i1j1s_func
+        input1 = make_label_input(args.maxlen)
+        input2 = make_label_input(args.maxlen)
+        input3 = make_label_input(args.maxlen)
+        inputs = [input1, input2, input3]
+        siamese = make_siamese_model(input1, input2, encoder, drop=0.3)
+        loss_out = Lambda(
+            loss_i1i1_i1i2s_i1j1s_func,
+            output_shape=(1,),
+            name='loss_func')([
+                autoencoder(input1),
+                char_emb_model(input1),
+                siamese([input1, input2]),
+                siamese([input1, input3])])
+        ids = np.arange(len(X_train))
+        np.random.shuffle(ids)
+        X_train = [X_train, X_train, X_train[ids]]
+        ids = np.arange(len(X_test))
+        np.random.shuffle(ids)
+        X_test = [X_test, X_test, X_test[ids]]
     elif args.loss_type == 'i1i1-i1i2s':
-        siamese = make_siamese_model(img1_input, img2_input, encoder)
+        from models import make_siamese_model
+        from models import loss_i1i1_i1i2s_func
+        input1 = make_label_input(args.maxlen)
+        input2 = make_label_input(args.maxlen)
+        inputs = [input1, input2]
+        siamese = make_siamese_model(input1, input2, encoder, drop=0.0)
         loss_out = Lambda(
             loss_i1i1_i1i2s_func,
             output_shape=(1,),
             name='loss_func')([
-                autoencoder(img1_input),
-                img1_input,
-                siamese([img1_input, img2_input])])
-        model = Model(
-            inputs=[img1_input, img2_input],
-            outputs=[loss_out],
-            name=model_name)
+                autoencoder(input1),
+                char_emb_model(input1),
+                siamese([input1, input2])])
+        X_train = [X_train, X_train]
+        X_test = [X_test, X_test]
     elif args.loss_type == 'i1i1':
+        from models import loss_i1i1_func as loss_func
+        input1 = make_label_input(args.maxlen)
+        inputs = [input1]
         loss_out = Lambda(
-            loss_i1i1_func,
+            loss_func,
             output_shape=(1,),
             name='loss_func')([
-                autoencoder(img1_input),
-                img1_input])
-        model = Model(
-            inputs=[img1_input],
-            outputs=[loss_out],
-            name=model_name)
+                autoencoder(input1),
+                char_emb_model(input1)])
     elif args.loss_type == 'i1i2':
         loss_out = Lambda(
             loss_i1i2_func,
@@ -160,73 +181,32 @@ if __name__ == '__main__':
             inputs=[img1_input, img2_input],
             outputs=[loss_out],
             name=model_name)
-    
-    loss_out = Lambda(
-        loss_func,
-        output_shape=(1,),
-        name='loss_func')(
-        [autoencoder(inputs[0]), char_emb_model(inputs[0])])
-    model = Model(inputs=inputs, output=[loss_out])
+    model = Model(
+        inputs=inputs,
+        output=[loss_out],
+        name=model_name)
     
     optimizer = 'rmsprop'
     model.compile(
         optimizer=optimizer,
         loss={'loss_func' : lambda y_true, y_pred: y_pred})
     
-    # ReduceLROnPlateau(patience=patience / 2, verbose=1),
+    # ReduceLROnPlateau(patience=args.patience / 2, verbose=1),
     
-    model_name = 'char-cnn'
-    patience = 5
     callbacks = [
-        EarlyStopping(monitor='val_loss', patience=patience, verbose=0, mode='auto'),
+        EarlyStopping(monitor='val_loss', patience=args.patience, verbose=0, mode='auto'),
         CSVLogger(filename=model_name + '.log.csv'),
         TensorBoard(log_dir='./logs'),
         ModelCheckpoint(model_name + '.check',
                         save_best_only=True,
                         save_weights_only=True)]
-    
     model.fit(
         X_train,
-        X_train,
-        validation_data=(X_test, X_test),
-        batch_size=batch_size,
-        epochs=max_epochs,
+        X_train[0],
+        validation_data=(X_test, X_test[0]),
+        batch_size=args.batch_size,
+        epochs=args.epochs,
         shuffle=True,
         callbacks=callbacks)
+    print('Model wrote to {0}.check'.format(model_name))
 
-
-
-
-
-
-
-    num_matrices = 2 if '2' in args.loss_type else 1
-    data_train = DataGeneratorPhraseImIm(
-        img_dir,
-        index_fname,
-        batch_size=args.batch_size,
-        output_filler=True,
-        num_matrices=num_matrices)
-    data_val = DataGeneratorPhraseImIm(
-        img_dir,
-        index_fname.replace('train', 'trial'),
-        batch_size=args.batch_size_val,
-        shuffle=False,
-        output_filler=True,
-        num_matrices=num_matrices)
-
-    try:
-        model.fit_generator(
-            generator=data_train.generate(),
-            validation_data=data_val.generate(),
-            epochs=args.epochs,
-            steps_per_epoch=args.steps_per_epoch,
-            validation_steps=args.validation_steps,
-            shuffle=True,
-            callbacks=callback)
-        print('Model wrote to {0}.check'.format(model_name))
-    except:
-        pass
-    finally:
-        data_train.save_log(model_basename + '_samples_train.json')
-        data_val.save_log(model_basename + '_samples_val.json')
