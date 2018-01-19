@@ -1,0 +1,51 @@
+# TODO:
+* Fix: CUDA_VISIBLE_DEVICES=6 python linking.py
+* Test (test.py) to see if label representations are meaningful (different to zero).
+  * We may need to have persistence with char_indices and maxlen.
+  * Perhaps saving it after the model checkpoint has been saved,
+    using the same prefix name.
+* Improve sampling:
+  * We can create meaningful data augmentation by corrupting
+    labels in a natural way (e.g. misspellings, shortening, cropping, etc.).
+
+* In DBpedia ontology there are ontological types and relations (30K in total).
+* Model: map mentions to types or dbo-relations:
+  * Data: dbpedia_ontology.nt, ~ 30K items.
+  * Includes labels and comments/descriptions.
+* Model: map mentions to dpedia resources (dbr).
+  * Data: infobox_properties_en.ttl.bz2, ~3M unique items.
+  * Includes: dbpedia.org/resource/<Name> where <Name> could be used as a large-coverage character match.
+  * Data: labels_en.ttl.bz2, ~12M unique (?) items.
+  * Includes: df-schema#label short English strings.
+  * Data: nif_context_en.ttl.bz2, ~5M items.
+  * Includes: isString large context (one big paragraph).
+* Model: map mentions to dpedia properties (dbp).
+  * Data: infobox_property_definitions_en.ttl.bz2, 60K items.
+  * Includes: rdf-schema#label with a meaningful short English label.
+
+# Instructions:
+
+$ python ontology_prep.py dbpedia_ontology.nt > dbpedia_ontology.labels.jsonl
+
+Outputs (~4K items):
+{"role": "type", "uri": "dbo:LunarCrater", "label": "lunar crater"}
+{"role": "type", "uri": "dbo:MotorsportSeason", "label": "motorsport season"}
+...
+{"role": "rel", "uri": "dbo:fansgroup", "label": "fansgroup"}
+{"role": "rel", "uri": "dbo:population", "label": "population"}
+
+$ python dbpedia_rels_prep.py infobox_property_definitions_en.ttl.bz2 > dbpedia_rels.labels.jsonl
+
+Otputs (~60K items):
+{"uri": "dbp:mostSuccessfulRiders", "label": "most successful riders"}
+{"uri": "dbp:dateOfBuilt", "label": "date of built"}
+...
+
+$ python dbpedia_ents_prep.py infobox_properties_en.ttl.bz2 labels_en.ttl.bz2 nif_context_en.ttl.bz2 > dbpedia_ents.text.jsonl
+
+Outputs (~13M items):
+{"context": "Rarohenga is the underworld and realm of the spirits in M\u0101ori mythology. Inhabitants of Rarohenga are called turehu and are governed by Hine nui te Po.", "label": "Rarohenga", "surf": "Rarohenga", "uri": "dbr:Rarohenga"}
+{"context": "", "label": "Saryesik Atyrau Desert", "surf": "Saryesik_Atyrau_Desert", "uri": "dbr:Saryesik_Atyrau_Desert"}
+...
+
+
