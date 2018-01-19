@@ -1,5 +1,4 @@
 # TODO:
-* Fix: CUDA_VISIBLE_DEVICES=6 python linking.py
 * Test (test.py) to see if label representations are meaningful (different to zero).
   * We may need to have persistence with char_indices and maxlen.
   * Perhaps saving it after the model checkpoint has been saved,
@@ -48,4 +47,19 @@ Outputs (~13M items):
 {"context": "", "label": "Saryesik Atyrau Desert", "surf": "Saryesik_Atyrau_Desert", "uri": "dbr:Saryesik_Atyrau_Desert"}
 ...
 
+To compute entity linking:
+
+$ echo "angelina jolie" | CUDA_VISIBLE_DEVICES=7 python el.py --model char-cnn_linkent_i1i1-i1i2s.check
+
+Output:
+{"label": "Angelina jolie", "uri": "dbr:Angelina_jolie", "score": 1.0}
+{"label": "Angelina Jolie", "uri": "dbr:Angelina_Jolie", "score": 1.0}
+{"label": "Angelina Jolie Trapdoor Spider", "uri": "dbr:Angelina_Jolie_Trapdoor_Spider", "score": 0.9935481548309326}
+{"label": "Angelina Jolie Voight", "uri": "dbr:Angelina_Jolie_Voight", "score": 0.9934994578361511}
+{"label": "Angelina Jolie cancer treatment", "uri": "dbr:Angelina_Jolie_cancer_treatment", "score": 0.9927096366882324}
+{"label": "Angelina Jolie Pitt", "uri": "dbr:Angelina_Jolie_Pitt", "score": 0.9916501045227051}
+{"label": "Angelina Joli", "uri": "dbr:Angelina_Joli", "score": 0.9904723167419434}
+{"label": "Angelina Jolie Filmography", "uri": "dbr:Angelina_Jolie_Filmography", "score": 0.9891354441642761}
+{"label": "Angelina Jolie filmography", "uri": "dbr:Angelina_Jolie_filmography", "score": 0.9891354441642761}
+{"label": "Anjelina Jolie", "uri": "dbr:Anjelina_Jolie", "score": 0.9852608442306519}
 
