@@ -21,6 +21,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "queries", nargs='?', type=argparse.FileType('r'), default=sys.stdin)
 parser.add_argument("--mentions", nargs='?', default="")
+parser.add_argument("--targets", nargs='?',
+    default="data/dbpedia_ents.text.jsonl",
+    help="Filename where the KB items (uri, label) are in jsonl.")
 parser.add_argument("--nbest", nargs='?', type=int, default=10)
 parser.add_argument("--model", nargs='?',
     default="char-cnn_linkent_i1i1-i1i2s.check",
@@ -47,7 +50,7 @@ if not os.path.exists(model_fname):
 
 logging.info('Loading KB entities...')
 labels, entities = load_labels(
-    'data/dbpedia_ents.text.jsonl',
+    args.targets,
     ntrain=args.nlabels,
     return_jsonl=True)
 assert len(labels) == len(entities)
@@ -55,7 +58,7 @@ logging.info('Finished load.')
 X = labels_to_matrix(labels, args.maxlen)
 
 # mentions = [m.strip().lower() for m in args.queries]
-mentions = ['angelina jolie']
+mentions = ['angeline yoli']
 M = labels_to_matrix(mentions)
 
 num_filters = (args.char_emb_size, args.char_emb_size * 2, args.char_emb_size * 4)

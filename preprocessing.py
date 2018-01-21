@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import re
 import string
+import sys
 import time
 
 chars = string.ascii_lowercase + string.digits + string.punctuation
@@ -46,12 +47,15 @@ def load_labels(fname, ntrain=1000, lowercase=True, return_jsonl=False):
             if len(label) > 0:
                 labels.append(label.lower())
                 num_labels += 1
+                if num_labels % 100000 == 0:
+                    print('.', end="", file=sys.stderr)
                 if return_jsonl:
                     jsonl_data.append(d)
             else:
                 num_ignored += 1
             if num_labels == ntrain:
                 break
+    print('', file=sys.stderr)
     logging.info('Loaded {0} labels, {1} ignored, {2} requested.'.format(
         len(labels), num_ignored, ntrain))
     if return_jsonl:

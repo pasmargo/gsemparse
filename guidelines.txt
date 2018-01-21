@@ -63,3 +63,17 @@ Output:
 {"label": "Angelina Jolie filmography", "uri": "dbr:Angelina_Jolie_filmography", "score": 0.9891354441642761}
 {"label": "Anjelina Jolie", "uri": "dbr:Anjelina_Jolie", "score": 0.9852608442306519}
 
+$ echo "angeline yoli" | CUDA_VISIBLE_DEVICES=7 python -i el.py --model char-cnn_linkent_i1i1-i1i2s.check
+
+Output:
+{"label": "Angeline Jolie", "uri": "dbr:Angeline_Jolie", "score": 0.9747606515884399}
+{"label": "Uncle Willie", "uri": "dbr:Uncle_Willie", "score": 0.9626715183258057}
+{"label": "Parmelia (lichen)", "uri": "dbr:Parmelia_(lichen)", "score": 0.9624680280685425}
+{"label": "Uriele Vitolo", "uri": "dbr:Uriele_Vitolo", "score": 0.9623000025749207}
+{"label": "Ding Lieyun", "uri": "dbr:Ding_Lieyun", "score": 0.9620264172554016}
+{"label": "Earl of Loudon", "uri": "dbr:Earl_of_Loudon", "score": 0.9615837335586548}
+{"label": "Angeline Myra Keen", "uri": "dbr:Angeline_Myra_Keen", "score": 0.9613763093948364}
+{"label": "Angel Negro", "uri": "dbr:Angel_Negro", "score": 0.9613314867019653}
+{"label": "Angeline Malik", "uri": "dbr:Angeline_Malik", "score": 0.9612295627593994}
+{"label": "Angeline of Marsciano", "uri": "dbr:Angeline_of_Marsciano", "score": 0.9602781534194946}
+
