@@ -57,14 +57,9 @@ assert len(labels) == len(entities)
 logging.info('Finished load.')
 X = labels_to_matrix(labels, args.maxlen)
 
-# mentions = [m.strip().lower() for m in args.queries]
-mentions = ['angeline yoli']
+mentions = [m.strip().lower() for m in args.queries]
+# mentions = ['colour']
 M = labels_to_matrix(mentions)
-
-num_filters = (args.char_emb_size, args.char_emb_size * 2, args.char_emb_size * 4)
-filter_lengths = (3, 3, 3)
-subsamples = (1, 1, 1)
-pool_lengths = (2, 2, 2)
 
 inputs, outputs, char_emb_x = make_encoder(
     args.maxlen,
@@ -77,7 +72,8 @@ encoder = Model(inputs=inputs, outputs=outputs)
 encoder.load_weights(model_fname, by_name=True)
 
 ent_cache_fname = model_fname.replace('.check', '_ent{0}_enc.npy'.format(args.nlabels))
-if os.path.exists(ent_cache_fname):
+# if os.path.exists(ent_cache_fname):
+if False:
     logging.info('Loading cached embeddings of entities...')
     X_enc = np.load(ent_cache_fname)
     logging.info('Finished loading cached embeddings: {0}'.format(X_enc.shape))
@@ -97,14 +93,17 @@ logging.info('Finished computing similarities.')
 
 diffs_argpart = np.argpartition(diffs, args.nbest)
 best_entries = list(diffs_argpart[0][:args.nbest])
+print(best_entries)
 best_entities = []
+# from pudb import set_trace; set_trace()
 for i in best_entries:
     entity = entities[i]
     for field in list(entity.keys()):
         if field not in fields:
             del entity[field]
-        entity['score'] = 1 - diffs[0][i]
+    entity['score'] = 1 - diffs[0][i]
     best_entities.append(entity)
+print(best_entities)
 best_entities.sort(key=lambda e: e['score'], reverse=True)
 for entity in best_entities:
     print(json.dumps(entity, indent=None))

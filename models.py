@@ -85,12 +85,12 @@ def loss_i1i1_i1i2s_i1j1s_func(args):
     return loss
 
 def make_encoder(
-    maxlen,
-    char_emb_size,
-    num_filters=(64, 100),
-    filter_lengths=(3, 3),
-    subsamples=(2, 1),
-    pool_lengths=(2, 2)):
+    maxlen=16,
+    char_emb_size=128,
+    num_filters=(128, 128 * 2, 128 * 4),
+    filter_lengths=(3, 3, 3),
+    subsamples=(1, 1, 1),
+    pool_lengths=(2, 2, 2)):
     """
     Make the output of an encoder (but does not build the model).
     """
