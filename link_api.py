@@ -6,87 +6,89 @@ Example call: curl http://127.0.0.1:5000/wor2vec/n_similarity/ws1=Sushi&ws1=Shop
 @TODO: Add command line parameters: host and port
 '''
 
-from flask import Flask, request, jsonify
-from flask.ext.restful import Resource, Api, reqparse
-from gensim.models.word2vec import Word2Vec as w
-from gensim import utils, matutils
-from numpy import exp, dot, zeros, outer, random, dtype, get_include, float32 as REAL,\
-     uint32, seterr, array, uint8, vstack, argsort, fromstring, sqrt, newaxis, ndarray, empty, sum as np_sum
-import cPickle
 import argparse
 import base64
+import cPickle
+from flask import Flask, request, jsonify
+from flask.ext.restful import Resource, Api, reqparse
+import json
+import logging
+import numpy as np
+from numpy import exp, dot, zeros, outer, random, dtype, get_include, float32 as REAL,\
+     uint32, seterr, array, uint8, vstack, argsort, fromstring, sqrt, newaxis, ndarray, empty, sum as np_sum
+import os
 import sys
+
+from keras.models import Model
+import sklearn.metrics.pairwise as pairwise
+
+from models import make_encoder
+from preprocessing import labels_to_matrix
+from preprocessing import load_labels
 
 parser = reqparse.RequestParser()
 
+# class Similarity(Resource):
+#     def get(self):
+#         parser = reqparse.RequestParser()
+#         parser.add_argument('w1', type=str, required=True, help="Word 1 cannot be blank!")
+#         parser.add_argument('w2', type=str, required=True, help="Word 2 cannot be blank!")
+#         args = parser.parse_args()
+#         return model.similarity(args['w1'], args['w2'])
+# 
+# class ModelWordSet(Resource):
+#     def get(self):
+#         try:
+#             res = base64.b64encode(cPickle.dumps(set(model.index2word)))
+#             return res
+#         except Exception, e:
+#             print e
+#             return
 
-def filter_words(words):
-    if words is None:
-        return
-    return [word for word in words if word in model.vocab]
-
-
-class N_Similarity(Resource):
+class GetBest(Resource):
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('ws1', type=str, required=True, help="Word set 1 cannot be blank!", action='append')
-        parser.add_argument('ws2', type=str, required=True, help="Word set 2 cannot be blank!", action='append')
+        parser.add_argument('source', type=str, default='dbr',
+            help="Source where to search (e.g. Ontology types, Ontology relations, DPBedia relations, etc.)",
+            choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
+        parser.add_argument('mention', type=str, required=True, action='append',
+            help="Mention from the claim or question")
+        parser.add_argument('nbest', type=int, required=False, default=10,
+            help="Number of results.")
+        parser.add_argument('fields', type=str, default='uri,label',
+            help="Fields to return as the URI information")
+            choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
         args = parser.parse_args()
-        return model.n_similarity(filter_words(args['ws1']),filter_words(args['ws2']))
-
-
-class Similarity(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('w1', type=str, required=True, help="Word 1 cannot be blank!")
-        parser.add_argument('w2', type=str, required=True, help="Word 2 cannot be blank!")
-        args = parser.parse_args()
-        return model.similarity(args['w1'], args['w2'])
-
-
-class MostSimilar(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('positive', type=str, required=False, help="Positive words.", action='append')
-        parser.add_argument('negative', type=str, required=False, help="Negative words.", action='append')
-        parser.add_argument('topn', type=int, required=False, help="Number of results.")
-        args = parser.parse_args()
-        pos = filter_words(args.get('positive', []))
-        neg = filter_words(args.get('negative', []))
-        t = args.get('topn', 10)
-        pos = [] if pos == None else pos
-        neg = [] if neg == None else neg
-        t = 10 if t == None else t
-        print "positive: " + str(pos) + " negative: " + str(neg) + " topn: " + str(t)
+        mention = ' '.join(args.mention).lower()
+        M = labels_to_matrix([mention])
+        M_enc = encoder.predict(M)
         try:
-            res = model.most_similar_cosmul(positive=pos,negative=neg,topn=t)
-            return res
-        except Exception, e:
-            print e
-            print res
-
-
-class Model(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('word', type=str, required=True, help="word to query.")
-        args = parser.parse_args()
-        try:
-            res = model[args['word']]
-            res = base64.b64encode(res)
-            return res
-        except Exception, e:
-            print e
+            L_enc = vectors_by_source[args.source]
+            uri_infos = uri_infos_by_source[args.source]
+        except Exception as e:
+            print(e)
             return
 
-class ModelWordSet(Resource):
-    def get(self):
-        try:
-            res = base64.b64encode(cPickle.dumps(set(model.index2word)))
-            return res
-        except Exception, e:
-            print e
-            return
+        logging.info('Computing pairwise similarities for mention {0} in {1}.'.format(
+            mention, source)
+        diffs = pairwise.pairwise_distances(M_enc, X_enc, metric='cosine', n_jobs=-1)
+        logging.info('Finished computing similarities.')
+
+        fields = args.fields.split(',')
+
+        diffs_argpart = np.argpartition(diffs, args.nbest)
+        best_uris = []
+        for i in best_entries:
+            uri_info = entities[i]
+            for field in list(uri_info.keys()):
+                if field not in fields:
+                    del uri_info[field]
+            uri_info['score'] = 1 - diffs[0][i]
+            best_uris.append(uri_info)
+        logging.info('Mention: {0}, best URIs: {1}'.format(mention, best_uris))
+        best_uris.sort(key=lambda e: e['score'], reverse=True)
+        result = base64.b64encode(cPickle.dumps(best_uris))
+        return result
 
 app = Flask(__name__)
 api = Api(app)
@@ -101,6 +103,11 @@ def raiseError(error):
 
 if __name__ == '__main__':
     global model
+    global encoder
+    global labels_by_source
+    global uri_infos_by_source
+    global matrix_by_source
+    global vectors_by_source
 
     #----------- Parsing Arguments ---------------
     parser = argparse.ArgumentParser()
@@ -134,7 +141,7 @@ if __name__ == '__main__':
     model_path = args.model if args.model else "./model.bin.gz"
     binary = True if args.binary else False
     host = args.host if args.host else "localhost"
-    path = args.path if args.path else "/word2vec"
+    path = args.path if args.path else "/linking"
     port = int(args.port) if args.port else 5000
 
     if not os.path.exists(args.model):
@@ -168,43 +175,8 @@ if __name__ == '__main__':
             matrix_by_source[source] = X
             X_enc = encoder.predict(X, batch_size=args.batch_size)
             vectors_by_source[source] = X_enc
-    # model = w.load_word2vec_format(model_path, binary=binary)
 
-
-    api.add_resource(N_Similarity, path+'/n_similarity')
-    api.add_resource(Similarity, path+'/similarity')
-    api.add_resource(MostSimilar, path+'/most_similar')
-    api.add_resource(Model, path+'/model')
-    api.add_resource(ModelWordSet, '/word2vec/model_word_set')
+    api.add_resource(Linking, path+'/get_best')
     app.run(host=host, port=port)
 
-
-mentions = [m.strip().lower() for m in args.queries]
-# mentions = ['colour']
-M = labels_to_matrix(mentions)
-
-M_enc = encoder.predict(M, batch_size=args.batch_size)
-
-fields = args.fields.split(',')
-
-logging.info('Computing pairwise similarities between query and KB entities...')
-diffs = pairwise.pairwise_distances(M_enc, X_enc, metric='cosine', n_jobs=-1)
-logging.info('Finished computing similarities.')
-
-diffs_argpart = np.argpartition(diffs, args.nbest)
-best_entries = list(diffs_argpart[0][:args.nbest])
-print(best_entries)
-best_entities = []
-# from pudb import set_trace; set_trace()
-for i in best_entries:
-    entity = entities[i]
-    for field in list(entity.keys()):
-        if field not in fields:
-            del entity[field]
-    entity['score'] = 1 - diffs[0][i]
-    best_entities.append(entity)
-print(best_entities)
-best_entities.sort(key=lambda e: e['score'], reverse=True)
-for entity in best_entities:
-    print(json.dumps(entity, indent=None))
 
