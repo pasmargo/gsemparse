@@ -1,9 +1,6 @@
 '''
-Simple web service wrapping a Word2Vec as implemented in Gensim
-Example call: curl http://127.0.0.1:5000/wor2vec/n_similarity/ws1=Sushi&ws1=Shop&ws2=Japanese&ws2=Restaurant
-@TODO: Add more methods
-@TODO: Add command line parameter: path to the trained model
-@TODO: Add command line parameters: host and port
+Web service that implements a mention linker to arbitrary KBs.
+Example call: curl 'http://127.0.0.1:5000/linking/get_best?source=onto_type&mention=angelina'
 '''
 
 import argparse
@@ -14,8 +11,6 @@ from flask_restful import Resource, Api, reqparse
 import json
 import logging
 import numpy as np
-from numpy import exp, dot, zeros, outer, random, dtype, get_include, float32 as REAL,\
-     uint32, seterr, array, uint8, vstack, argsort, fromstring, sqrt, newaxis, ndarray, empty, sum as np_sum
 import os
 import sys
 
@@ -27,23 +22,6 @@ from preprocessing import labels_to_matrix
 from preprocessing import load_labels
 
 parser = reqparse.RequestParser()
-
-# class Similarity(Resource):
-#     def get(self):
-#         parser = reqparse.RequestParser()
-#         parser.add_argument('w1', type=str, required=True, help="Word 1 cannot be blank!")
-#         parser.add_argument('w2', type=str, required=True, help="Word 2 cannot be blank!")
-#         args = parser.parse_args()
-#         return model.similarity(args['w1'], args['w2'])
-# 
-# class ModelWordSet(Resource):
-#     def get(self):
-#         try:
-#             res = base64.b64encode(cPickle.dumps(set(model.index2word)))
-#             return res
-#         except Exception, e:
-#             print e
-#             return
 
 class GetBest(Resource):
     def get(self):
@@ -59,27 +37,28 @@ class GetBest(Resource):
             help="Fields to return as the URI information",
             choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
         args = parser.parse_args()
-        mention = ' '.join(args.mention).lower()
+        mention = ' '.join(args['mention']).lower()
         M = labels_to_matrix([mention])
         M_enc = encoder.predict(M)
         try:
-            L_enc = vectors_by_source[args.source]
-            uri_infos = uri_infos_by_source[args.source]
+            L_enc = vectors_by_source[args['source']]
+            uri_infos = uri_infos_by_source[args['source']]
         except Exception as e:
             print(e)
-            return
 
-        logging.info('Computing pairwise similarities for mention {0} in {1}.'.format(
+        logging.info('Computing pairwise similarities for mention {0} as {1}.'.format(
             mention, source))
         diffs = pairwise.pairwise_distances(M_enc, X_enc, metric='cosine', n_jobs=-1)
         logging.info('Finished computing similarities.')
 
-        fields = args.fields.split(',')
+        fields = args['fields'].split(',')
 
-        diffs_argpart = np.argpartition(diffs, args.nbest)
+        diffs_argpart = np.argpartition(diffs, args['nbest'])
+        best_entries = list(diffs_argpart[0][:args['nbest']])
         best_uris = []
+        uri_infos = uri_infos_by_source.get(args['source'], None)
         for i in best_entries:
-            uri_info = entities[i]
+            uri_info = uri_infos[i]
             for field in list(uri_info.keys()):
                 if field not in fields:
                     del uri_info[field]
@@ -87,8 +66,7 @@ class GetBest(Resource):
             best_uris.append(uri_info)
         logging.info('Mention: {0}, best URIs: {1}'.format(mention, best_uris))
         best_uris.sort(key=lambda e: e['score'], reverse=True)
-        result = base64.b64encode(pickle.dumps(best_uris))
-        return result
+        return best_uris
 
 app = Flask(__name__)
 api = Api(app)
@@ -175,7 +153,7 @@ if __name__ == '__main__':
             X_enc = encoder.predict(X, batch_size=args.batch_size)
             vectors_by_source[source] = X_enc
 
-    api.add_resource(Linking, path+'/get_best')
+    api.add_resource(GetBest, path + '/get_best')
     app.run(host=host, port=port)
 
 
