@@ -8,9 +8,9 @@ Example call: curl http://127.0.0.1:5000/wor2vec/n_similarity/ws1=Sushi&ws1=Shop
 
 import argparse
 import base64
-import cPickle
+import pickle
 from flask import Flask, request, jsonify
-from flask.ext.restful import Resource, Api, reqparse
+from flask_restful import Resource, Api, reqparse
 import json
 import logging
 import numpy as np
@@ -56,7 +56,7 @@ class GetBest(Resource):
         parser.add_argument('nbest', type=int, required=False, default=10,
             help="Number of results.")
         parser.add_argument('fields', type=str, default='uri,label',
-            help="Fields to return as the URI information")
+            help="Fields to return as the URI information",
             choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
         args = parser.parse_args()
         mention = ' '.join(args.mention).lower()
@@ -70,7 +70,7 @@ class GetBest(Resource):
             return
 
         logging.info('Computing pairwise similarities for mention {0} in {1}.'.format(
-            mention, source)
+            mention, source))
         diffs = pairwise.pairwise_distances(M_enc, X_enc, metric='cosine', n_jobs=-1)
         logging.info('Finished computing similarities.')
 
@@ -87,7 +87,7 @@ class GetBest(Resource):
             best_uris.append(uri_info)
         logging.info('Mention: {0}, best URIs: {1}'.format(mention, best_uris))
         best_uris.sort(key=lambda e: e['score'], reverse=True)
-        result = base64.b64encode(cPickle.dumps(best_uris))
+        result = base64.b64encode(pickle.dumps(best_uris))
         return result
 
 app = Flask(__name__)
@@ -139,7 +139,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 
     model_path = args.model if args.model else "./model.bin.gz"
-    binary = True if args.binary else False
     host = args.host if args.host else "localhost"
     path = args.path if args.path else "/linking"
     port = int(args.port) if args.port else 5000
