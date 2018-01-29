@@ -1,4 +1,8 @@
 # TODO:
+* There are problems with the saving and loading of model weights.
+  * One possible solution is to save/load the whole model.
+  * Another possibility is to iterate the hdf5 structure,
+    compare layer names and copy the weights (e.g. as load_weights(by_name=True) should do).
 * Test (test.py) to see if label representations are meaningful (different to zero).
   * We may need to have persistence with char_indices and maxlen.
   * Perhaps saving it after the model checkpoint has been saved,

@@ -92,10 +92,10 @@ if __name__ == '__main__':
         filter_lengths=filter_lengths,
         subsamples=subsamples,
         pool_lengths=pool_lengths)
-    encoder = Model(inputs=inputs, outputs=outputs)
+    encoder = Model(inputs=inputs, outputs=outputs, name='encoder_model')
     encoder.summary()
     
-    char_emb_model = Model(inputs=inputs, outputs=[char_emb_x])
+    char_emb_model = Model(inputs=inputs, outputs=[char_emb_x], name='char_emb_model')
     char_emb_model.summary()
     
     _, outputs = make_decoder(
@@ -104,7 +104,7 @@ if __name__ == '__main__':
         filter_lengths=list(reversed(filter_lengths)),
         subsamples=list(reversed(subsamples)),
         up_lengths=list(reversed(pool_lengths)))
-    autoencoder = Model(inputs=inputs, outputs=outputs)
+    autoencoder = Model(inputs=inputs, outputs=outputs, name='autoencoder_model')
     autoencoder.summary()
     
     loss_out = None
@@ -208,5 +208,7 @@ if __name__ == '__main__':
         epochs=args.epochs,
         shuffle=True,
         callbacks=callbacks)
+
+    encoder.
     print('Model wrote to {0}.check'.format(model_name))
 
