@@ -14,7 +14,7 @@ import numpy as np
 import os
 import sys
 
-from keras.models import Model
+from keras.models import load_model
 import sklearn.metrics.pairwise as pairwise
 
 from models import make_encoder
@@ -40,6 +40,7 @@ class GetBest(Resource):
         mention = ' '.join(args['mention']).lower()
         M = labels_to_matrix([mention])
         M_enc = encoder.predict(M)
+        print('Encoded mention:\n{0}'.format(M_enc))
         try:
             L_enc = vectors_by_source[args['source']]
             uri_infos = uri_infos_by_source[args['source']]
@@ -100,8 +101,8 @@ if __name__ == '__main__':
         help='Tuple with source (e.g. ontology type, DBpedia resource, etc.) and filename with jsonl entries')
     parser.add_argument("--nbest", nargs='?', type=int, default=10)
     parser.add_argument("--model", nargs='?',
-        default="char-cnn_linkent_i1i1-i1i2s.check",
-        help="Filename where the Keras encoder is saved.")
+        default="char-cnn_linkent_i1i1-i1i2s.h5",
+        help="Filename where the Keras encoder model is saved.")
     parser.add_argument("--model_type", nargs='?', default="char-cnn",
         choices=["char-cnn", "char-lstm"])
     parser.add_argument("--nlabels", nargs='?', type=int, default=-1,
@@ -125,9 +126,7 @@ if __name__ == '__main__':
         print('Model file does not exist: {0}'.format(args.model))
         parser.print_help(file=sys.stderr)
         sys.exit(1)
-    inputs, outputs, char_emb_x = make_encoder()
-    encoder = Model(inputs=inputs, outputs=outputs)
-    encoder.load_weights(args.model, by_name=True)
+    encoder = load_model(args.model)
 
     labels_by_source = {}
     uri_infos_by_source = {}

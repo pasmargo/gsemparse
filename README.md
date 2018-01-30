@@ -1,12 +1,6 @@
 # TODO:
-* There are problems with the saving and loading of model weights.
-  * One possible solution is to save/load the whole model.
-  * Another possibility is to iterate the hdf5 structure,
-    compare layer names and copy the weights (e.g. as load_weights(by_name=True) should do).
-* Test (test.py) to see if label representations are meaningful (different to zero).
-  * We may need to have persistence with char_indices and maxlen.
-  * Perhaps saving it after the model checkpoint has been saved,
-    using the same prefix name.
+* When the pipeline is completed, return to the entity linker for further refinements. E.g.:
+  * Siamese network for similarity measurements using "Learning to Rank" techniques.
 * Improve sampling:
   * We can create meaningful data augmentation by corrupting
     labels in a natural way (e.g. misspellings, shortening, cropping, etc.).
@@ -71,7 +65,7 @@ Outputs (~13M items):
 ## Train linker:
 
 ```
-CUDA_VISIBLE_DEVICES=6 python linking.py --loss_type i1i1-i1i2s --batch_size 100
+CUDA_VISIBLE_DEVICES=6 python linking.py --loss_type i1i1-i1i2s
 ```
 
 ## Linking

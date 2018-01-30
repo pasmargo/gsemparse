@@ -34,21 +34,14 @@ if __name__ == '__main__':
         choices=["char-cnn", "char-lstm"])
     parser.add_argument("--loss_type", nargs='?', default="i1i1",
         choices=["i1i1", "i1i1-i1i2s", "i1i1-i1i2s-i1j1s"])
-    parser.add_argument("--ntrain", nargs='?', type=int, default=1000000)
+    parser.add_argument("--ntrain", nargs='?', type=int, default=-1)
     parser.add_argument("--maxlen", nargs='?', type=int, default=16,
         help="Maximum length of labels. Longer labels are cropped.")
     parser.add_argument("--char_emb_size", nargs='?', type=int, default=128)
     parser.add_argument("--batch_size", nargs='?', type=int, default=500)
-    parser.add_argument("--batch_size_val", nargs='?', type=int, default=150)
     parser.add_argument("--epochs", nargs='?', type=int, default=200)
-    parser.add_argument("--steps_per_epoch", nargs='?', type=int, default=100)
-    parser.add_argument("--validation_steps", nargs='?', type=int, default=1)
     parser.add_argument("--patience", nargs='?', type=int, default=5)
-    parser.add_argument("--batch_normalization", nargs='?', type=bool, default=False)
-    parser.add_argument("--reduce_params", dest="reduce_params", action="store_true")
-    parser.add_argument("--no_reduce_params", dest="reduce_params", action="store_false")
     parser.add_argument("--exp_suffix", nargs='?', default="")
-    parser.set_defaults(reduce_params=True)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
@@ -209,6 +202,6 @@ if __name__ == '__main__':
         shuffle=True,
         callbacks=callbacks)
 
-    encoder.
-    print('Model wrote to {0}.check'.format(model_name))
+    encoder.save(model_name + '.h5')
+    print('Encoder model wrote to {0}.h5'.format(model_name))
 

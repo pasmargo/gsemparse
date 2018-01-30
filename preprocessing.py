@@ -49,6 +49,7 @@ def load_labels(fname, ntrain=1000, lowercase=True, return_jsonl=False):
                 num_labels += 1
                 if num_labels % 100000 == 0:
                     print('.', end="", file=sys.stderr)
+                    sys.stdout.flush()
                 if return_jsonl:
                     jsonl_data.append(d)
             else:

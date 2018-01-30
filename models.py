@@ -13,6 +13,8 @@ from keras.regularizers import l2
 
 from preprocessing import char_indices
 
+L2Strength = 1e-3
+
 def make_label_input(maxlen):
     label_input = Input(shape=(maxlen,), dtype='int32')
     return label_input
@@ -116,7 +118,12 @@ def make_encoder(
             pool_size=pool_lengths[i],
             name='enc_maxpool1d_' + str(i))(x)
     x = Flatten(name='enc_flatten')(x)
-    x = Dense(128, activation='relu', name='enc_dense_128')(x)
+    x = Dense(
+            128,
+            kernel_regularizer=l2(L2Strength),
+            bias_regularizer=l2(L2Strength),
+            activation='tanh',
+            name='enc_dense_128')(x)
 
     inputs = [entity]
     outputs = [x]
@@ -129,7 +136,12 @@ def make_decoder(
     subsamples=(2, 1),
     up_lengths=(2, 2)):
 
-    x = Dense(2 * num_filters[0], activation='relu', name='dec_dense')(encoded_entity)
+    x = Dense(
+        2 * num_filters[0],
+        kernel_regularizer=l2(L2Strength),
+        bias_regularizer=l2(L2Strength),
+        activation='tanh',
+        name='dec_dense')(encoded_entity)
     x = Reshape((2, num_filters[0]), name='dec_reshape')(x)
 
     for i in range(len(num_filters)):
