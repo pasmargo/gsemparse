@@ -38,12 +38,13 @@ class GetBest(Resource):
             choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
         args = parser.parse_args()
         mention = ' '.join(args['mention']).lower()
+        source = args['source']
         M = labels_to_matrix([mention])
         M_enc = encoder.predict(M)
-        print('Encoded mention:\n{0}'.format(M_enc))
+        # print('Encoded mention:\n{0}'.format(M_enc))
         try:
-            L_enc = vectors_by_source[args['source']]
-            uri_infos = uri_infos_by_source[args['source']]
+            L_enc = vectors_by_source[source]
+            uri_infos = uri_infos_by_source[source]
         except Exception as e:
             print(e)
 
@@ -57,7 +58,7 @@ class GetBest(Resource):
         diffs_argpart = np.argpartition(diffs, args['nbest'])
         best_entries = list(diffs_argpart[0][:args['nbest']])
         best_uris = []
-        uri_infos = uri_infos_by_source.get(args['source'], None)
+        uri_infos = uri_infos_by_source.get(source, None)
         for i in best_entries:
             uri_info = uri_infos[i]
             for field in list(uri_info.keys()):

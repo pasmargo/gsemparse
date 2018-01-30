@@ -1,6 +1,8 @@
 # TODO:
+* Write the client side of the linking API.
 * When the pipeline is completed, return to the entity linker for further refinements. E.g.:
   * Siamese network for similarity measurements using "Learning to Rank" techniques.
+* Write grammar for SQA challenge according to (their templates)[https://github.com/AskNowQA/LC-QuAD/blob/develop/templates.py]:
 * Improve sampling:
   * We can create meaningful data augmentation by corrupting
     labels in a natural way (e.g. misspellings, shortening, cropping, etc.).
