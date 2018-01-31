@@ -41,6 +41,7 @@ class GetBest(Resource):
         source = args['source']
         M = labels_to_matrix([mention])
         M_enc = encoder.predict(M)
+        print('Encoding of {0}:\n{1}'.format(mention, M_enc))
         try:
             L_enc = vectors_by_source[source]
             uri_infos = uri_infos_by_source[source]
@@ -50,9 +51,6 @@ class GetBest(Resource):
                 source, list(vectors_by_source.keys())))
             raise
 
-        # for source, Z in uri_infos_by_source.items():
-        #     print('Uri infos, source: {0}, Z length: {1}'.format(source, len(Z)))
-
         logging.info('Computing pairwise similarities for mention "{0}" as {1}.'.format(
             mention, source))
         diffs = pairwise.pairwise_distances(M_enc, L_enc, metric='cosine', n_jobs=-1)
@@ -61,7 +59,6 @@ class GetBest(Resource):
         fields = args['fields'].split(',')
 
         diffs_argpart = np.argpartition(diffs, args['nbest'])
-        # print('diffs_argpart shape: {0}'.format(diffs_argpart.shape))
         best_entries = list(diffs_argpart[0][:args['nbest']])
         best_uris = []
         for i in best_entries:

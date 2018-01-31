@@ -1,27 +1,19 @@
 # TODO:
-* Write the client side of the linking API.
+
+* Check why the dbr linking of "angelina jolie" works so bad.
+  * When printing the encoding of that mention, I find very small floating values. Possibly due to:
+  * A strong regularization,
+  * The activation function (tanh),
+  * A flawed loss function.
 * Implement the ASK l-DCS expression in transducers repository.
 * When the pipeline is completed, return to the entity linker for further refinements. E.g.:
+  * Create an evaluation method for the linker. For example, use all keywords from SQA
+    and all URIs, and measure the coverage@10 from all keywords.
   * Siamese network for similarity measurements using "Learning to Rank" techniques.
 * Write grammar for SQA challenge according to (their templates)[https://github.com/AskNowQA/LC-QuAD/blob/develop/templates.py]:
-* Improve sampling:
+* Improve sampling for linking routines:
   * We can create meaningful data augmentation by corrupting
     labels in a natural way (e.g. misspellings, shortening, cropping, etc.).
-
-* In DBpedia ontology there are ontological types and relations (30K in total).
-* Model: map mentions to types or dbo-relations:
-  * Data: dbpedia_ontology.nt, ~ 30K items.
-  * Includes labels and comments/descriptions.
-* Model: map mentions to dpedia resources (dbr).
-  * Data: infobox_properties_en.ttl.bz2, ~3M unique items.
-  * Includes: dbpedia.org/resource/<Name> where <Name> could be used as a large-coverage character match.
-  * Data: labels_en.ttl.bz2, ~12M unique (?) items.
-  * Includes: df-schema#label short English strings.
-  * Data: nif_context_en.ttl.bz2, ~5M items.
-  * Includes: isString large context (one big paragraph).
-* Model: map mentions to dpedia properties (dbp).
-  * Data: infobox_property_definitions_en.ttl.bz2, 60K items.
-  * Includes: rdf-schema#label with a meaningful short English label.
 
 # Instructions and examples:
 
@@ -134,3 +126,21 @@ Then, you can use the linking client to do the linking (grounding):
 python link_client.py --mention sibling --source onto_rel
 python link_client.py --mention mountain --source onto_type
 ```
+
+# (old) Review of resources that might be useful to train a linker.
+
+* In DBpedia ontology there are ontological types and relations (30K in total).
+* Model: map mentions to types or dbo-relations:
+  * Data: dbpedia_ontology.nt, ~ 30K items.
+  * Includes labels and comments/descriptions.
+* Model: map mentions to dpedia resources (dbr).
+  * Data: infobox_properties_en.ttl.bz2, ~3M unique items.
+  * Includes: dbpedia.org/resource/<Name> where <Name> could be used as a large-coverage character match.
+  * Data: labels_en.ttl.bz2, ~12M unique (?) items.
+  * Includes: df-schema#label short English strings.
+  * Data: nif_context_en.ttl.bz2, ~5M items.
+  * Includes: isString large context (one big paragraph).
+* Model: map mentions to dpedia properties (dbp).
+  * Data: infobox_property_definitions_en.ttl.bz2, 60K items.
+  * Includes: rdf-schema#label with a meaningful short English label.
+
