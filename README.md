@@ -120,4 +120,17 @@ Output:
 CUDA_VISIBLE_DEVICES=5 python link_api.py --tgs onto_type data/dbpedia_ontology_types.labels.jsonl --tgs onto_rel data/dbpedia_ontology_rels.labels.jsonl --tgs dbp data/dbpedia_rels.labels.jsonl --tgs dbr data/dbpedia_ents.text.jsonl
 ```
 
-It will start in server mode, listening on port 5000.
+It will start in server mode, listening on port 5000. It may take time to get ready since it needs to load all entities, relations and types from disk.
+
+When the server is ready, you will see a message:
+
+```
+INFO:werkzeug: * Running on http://localhost:5000/ (Press CTRL+C to quit)
+```
+
+Then, you can use the linking client to do the linking (grounding):
+
+```
+python link_client.py --mention sibling --source onto_rel
+python link_client.py --mention mountain --source onto_type
+```
