@@ -21,27 +21,26 @@ from models import make_encoder
 from preprocessing import labels_to_matrix
 from preprocessing import load_labels
 
-parser = reqparse.RequestParser()
+rparser = reqparse.RequestParser()
+rparser.add_argument('source', type=str, default='dbr',
+    help="Source where to search (e.g. Ontology types, Ontology relations, DPBedia relations, etc.)",
+    choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
+rparser.add_argument('mention', type=str, required=True, action='append',
+    help="Mention from the claim or question")
+rparser.add_argument('nbest', type=int, required=False, default=10,
+    help="Number of results.")
+rparser.add_argument('fields', type=str, default='uri,label,role',
+    help="Fields to return as the URI information",
+    choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
 
 class GetBest(Resource):
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('source', type=str, default='dbr',
-            help="Source where to search (e.g. Ontology types, Ontology relations, DPBedia relations, etc.)",
-            choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
-        parser.add_argument('mention', type=str, required=True, action='append',
-            help="Mention from the claim or question")
-        parser.add_argument('nbest', type=int, required=False, default=10,
-            help="Number of results.")
-        parser.add_argument('fields', type=str, default='uri,label',
-            help="Fields to return as the URI information",
-            choices=['onto_type', 'onto_rel', 'dbp', 'dbr'])
-        args = parser.parse_args()
+        global rparser
+        args = rparser.parse_args()
         mention = ' '.join(args['mention']).lower()
         source = args['source']
         M = labels_to_matrix([mention])
         M_enc = encoder.predict(M)
-        # print('Encoded mention:\n{0}'.format(M_enc))
         try:
             L_enc = vectors_by_source[source]
             uri_infos = uri_infos_by_source[source]
@@ -51,37 +50,33 @@ class GetBest(Resource):
                 source, list(vectors_by_source.keys())))
             raise
 
-        for source, Z in uri_infos_by_source.items():
-            print('Uri infos, source: {0}, Z length: {1}'.format(source, len(Z)))
+        # for source, Z in uri_infos_by_source.items():
+        #     print('Uri infos, source: {0}, Z length: {1}'.format(source, len(Z)))
 
         logging.info('Computing pairwise similarities for mention "{0}" as {1}.'.format(
             mention, source))
-        diffs = pairwise.pairwise_distances(M_enc, X_enc, metric='cosine', n_jobs=-1)
+        diffs = pairwise.pairwise_distances(M_enc, L_enc, metric='cosine', n_jobs=-1)
         logging.info('Finished computing similarities.')
 
         fields = args['fields'].split(',')
 
         diffs_argpart = np.argpartition(diffs, args['nbest'])
-        print('diffs_argpart shape: {0}'.format(diffs_argpart.shape))
+        # print('diffs_argpart shape: {0}'.format(diffs_argpart.shape))
         best_entries = list(diffs_argpart[0][:args['nbest']])
         best_uris = []
-        uri_infos = uri_infos_by_source.get(source, None)
         for i in best_entries:
             try:
                 uri_info = uri_infos[i]
             except Exception as e:
                 print(e)
-                print('Length of uri_infos: {0}'.format(len(uri_infos)))
-                print('best_entries: {0}'.format(best_entries))
-                print('Source: {0}'.format(source))
                 raise
             for field in list(uri_info.keys()):
                 if field not in fields:
                     del uri_info[field]
             uri_info['score'] = 1 - diffs[0][i]
             best_uris.append(uri_info)
-        logging.info('Mention: "{0}", best URIs: {1}'.format(mention, best_uris))
         best_uris.sort(key=lambda e: e['score'], reverse=True)
+        logging.info('Mention: "{0}", best URIs: {1}'.format(mention, best_uris))
         return best_uris
 
 app = Flask(__name__)
