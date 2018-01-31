@@ -1,5 +1,6 @@
 # TODO:
 * Write the client side of the linking API.
+* Implement the ASK l-DCS expression in transducers repository.
 * When the pipeline is completed, return to the entity linker for further refinements. E.g.:
   * Siamese network for similarity measurements using "Learning to Rank" techniques.
 * Write grammar for SQA challenge according to (their templates)[https://github.com/AskNowQA/LC-QuAD/blob/develop/templates.py]:
@@ -113,3 +114,10 @@ Output:
 {"label": "Angeline of Marsciano", "uri": "dbr:Angeline_of_Marsciano", "score": 0.9602781534194946}
 ```
 
+## Linking Server API
+
+```
+CUDA_VISIBLE_DEVICES=5 python link_api.py --tgs onto_type data/dbpedia_ontology_types.labels.jsonl --tgs onto_rel data/dbpedia_ontology_rels.labels.jsonl --tgs dbp data/dbpedia_rels.labels.jsonl --tgs dbr data/dbpedia_ents.text.jsonl
+```
+
+It will start in server mode, listening on port 5000.

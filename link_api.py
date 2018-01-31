@@ -47,8 +47,14 @@ class GetBest(Resource):
             uri_infos = uri_infos_by_source[source]
         except Exception as e:
             print(e)
+            print('Source {0} not available. Try instead one of: {1}'.format(
+                source, list(vectors_by_source.keys())))
+            raise
 
-        logging.info('Computing pairwise similarities for mention {0} as {1}.'.format(
+        for source, Z in uri_infos_by_source.items():
+            print('Uri infos, source: {0}, Z length: {1}'.format(source, len(Z)))
+
+        logging.info('Computing pairwise similarities for mention "{0}" as {1}.'.format(
             mention, source))
         diffs = pairwise.pairwise_distances(M_enc, X_enc, metric='cosine', n_jobs=-1)
         logging.info('Finished computing similarities.')
@@ -56,17 +62,25 @@ class GetBest(Resource):
         fields = args['fields'].split(',')
 
         diffs_argpart = np.argpartition(diffs, args['nbest'])
+        print('diffs_argpart shape: {0}'.format(diffs_argpart.shape))
         best_entries = list(diffs_argpart[0][:args['nbest']])
         best_uris = []
         uri_infos = uri_infos_by_source.get(source, None)
         for i in best_entries:
-            uri_info = uri_infos[i]
+            try:
+                uri_info = uri_infos[i]
+            except Exception as e:
+                print(e)
+                print('Length of uri_infos: {0}'.format(len(uri_infos)))
+                print('best_entries: {0}'.format(best_entries))
+                print('Source: {0}'.format(source))
+                raise
             for field in list(uri_info.keys()):
                 if field not in fields:
                     del uri_info[field]
             uri_info['score'] = 1 - diffs[0][i]
             best_uris.append(uri_info)
-        logging.info('Mention: {0}, best URIs: {1}'.format(mention, best_uris))
+        logging.info('Mention: "{0}", best URIs: {1}'.format(mention, best_uris))
         best_uris.sort(key=lambda e: e['score'], reverse=True)
         return best_uris
 
