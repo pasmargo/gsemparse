@@ -14,6 +14,7 @@ ifname = sys.argv[1]
 
 with bz2.BZ2File(ifname, 'r') as fin:
     for triplet_str in fin:
+        triplet_str = triplet_str.decode('utf-8')
         triplet_str = triplet_str.strip()
         if 'rdf-schema#label' in triplet_str and triplet_str.endswith('"@en .'):
             uri = get_short_uri(triplet_str)
