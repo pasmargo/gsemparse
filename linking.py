@@ -69,10 +69,12 @@ if __name__ == '__main__':
     np.random.shuffle(ids)
     X = X[ids]
     
-    split = int(args.ntrain * .8)
+    #split = int(args.ntrain * .8) # int(-1 * 0.8) = 0
+    split = int(len(labels) * .8)
     X_train = X[:split]
     X_test = X[split:]
-    
+    logging.info('Using {0} data for train, {1} data for validation.'.format(len(X_train), len(X_test)))    
+ 
     num_filters = (args.char_emb_size, args.char_emb_size * 2, args.char_emb_size * 4)
     filter_lengths = (3, 3, 3)
     subsamples = (1, 1, 1)
