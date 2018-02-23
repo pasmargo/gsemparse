@@ -1,4 +1,6 @@
 
+import numpy as np
+
 from keras import backend as K
 from keras.layers import Embedding, Flatten, UpSampling1D, Reshape
 from keras.layers import Dense, Input, Dropout, MaxPooling1D, Conv1D
@@ -13,13 +15,38 @@ from keras.regularizers import l2
 
 from preprocessing import char_indices
 
-L2Strength = 1e-3
+L2Strength = 1e-6
 
 def make_label_input(maxlen):
     label_input = Input(shape=(maxlen,), dtype='int32')
     return label_input
 
-def make_siamese_model(input1, input2, encoder, l2_strength=1e-3, dense_dim=128, drop=0.3):
+def make_siamese_model2(input1, input2, encoder, l2_strength=1e-6, dense_dim=128, drop=0.3):
+    """
+    Siamese model that computes cosine *similarity* (not distance).
+    """
+    in1 = encoder(input1)
+    in2 = encoder(input2)
+    in1 = Dense(
+        dense_dim,
+        kernel_regularizer=l2(l2_strength),
+        bias_regularizer=l2(l2_strength),
+        activation='relu',
+        name='siam_dense1_src')(in1)
+    in1 = Dropout(drop, name='siam_drop1_src')(in1)
+    in2 = Dense(
+        dense_dim,
+        kernel_regularizer=l2(l2_strength),
+        bias_regularizer=l2(l2_strength),
+        activation='relu',
+        name='siam_dense1_trg')(in2)
+    in2 = Dropout(drop, name='siam_drop2_src')(in2)
+    return in1, in2
+
+def make_siamese_model(input1, input2, encoder, l2_strength=1e-6, dense_dim=128, drop=0.3):
+    """
+    Siamese model that computes cosine *similarity* (not distance).
+    """
     in1 = encoder(input1)
     in2 = encoder(input2)
     in1 = Dense(
@@ -98,9 +125,13 @@ def make_encoder(
     """
     entity = make_label_input(maxlen)
 
+    # TODO: make explicit 0 embedding for character index 0.
+    embs = np.random.uniform(-0.05, 0.05, (len(char_indices) + 1, char_emb_size))
+    embs[0, :] = 0
     char_emb = Embedding(
-        input_dim=len(char_indices),
+        input_dim=len(char_indices) + 1,
         output_dim=char_emb_size,
+        weights=[embs],
         trainable=False,
         name='char_emb')
     char_emb_x = char_emb(entity)
@@ -122,7 +153,7 @@ def make_encoder(
             128,
             kernel_regularizer=l2(L2Strength),
             bias_regularizer=l2(L2Strength),
-            activation='tanh',
+            activation='relu',
             name='enc_dense_128')(x)
 
     inputs = [entity]

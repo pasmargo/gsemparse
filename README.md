@@ -1,5 +1,8 @@
 # TODO:
 
+* '0' as padding might be dominating. At the moment I created a zero embedding for this entry.
+  * You can continue testing with python test2.py
+* DB encoding results in a suspiciously regular matrix. Investigate that.
 * Check why the dbr linking of "angelina jolie" works so bad.
   * When printing the encoding of that mention, I find very small floating values. Possibly due to:
   * A strong regularization,

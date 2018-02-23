@@ -103,6 +103,7 @@ if __name__ == '__main__':
     autoencoder.summary()
     
     loss_out = None
+    siamese = None
     inputs = []
     if args.loss_type == 'i1i1-i1i2':
         loss_out = Lambda(
@@ -206,4 +207,8 @@ if __name__ == '__main__':
 
     encoder.save(model_name + '.h5')
     print('Encoder model wrote to {0}.h5'.format(model_name))
+    if siamese is not None:
+        siamese_model_name = model_name + '_siamese'
+        siamese.save(siamese_model_name + '.h5')
+        print('Siamese model wrote to {0}.h5'.format(siamese_model_name))
 

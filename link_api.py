@@ -17,7 +17,6 @@ import sys
 from keras.models import load_model
 import sklearn.metrics.pairwise as pairwise
 
-from models import make_encoder
 from preprocessing import labels_to_matrix
 from preprocessing import load_labels
 
@@ -40,10 +39,14 @@ class GetBest(Resource):
         mention = ' '.join(args['mention']).lower()
         source = args['source']
         M = labels_to_matrix([mention])
-        M_enc = encoder.predict(M)
-        print('Encoding of {0}:\n{1}'.format(mention, M_enc))
+        print('Encoding mention "{0}" into vector of character indices:\n{1}'.format(
+          mention, M))
+        M_enc = mention_encoder.predict(M)
+        print('Encoding of "{0}" into a vector of shape {1}:\n{2}'.format(
+            mention, M_enc.shape, M_enc))
         try:
             L_enc = vectors_by_source[source]
+            print('Encoding of DB into a vector of shape {0}'.format(L_enc.shape))
             uri_infos = uri_infos_by_source[source]
         except Exception as e:
             print(e)
@@ -89,7 +92,7 @@ def raiseError(error):
 
 if __name__ == '__main__':
     global model
-    global encoder
+    global mention_encoder
     global labels_by_source
     global uri_infos_by_source
     global matrix_by_source
@@ -116,7 +119,7 @@ if __name__ == '__main__':
         help="Number of entities to load from file. If -1, then load them all.")
     parser.add_argument("--maxlen", nargs='?', type=int, default=16,
         help="Maximum length of labels. Longer labels are cropped.")
-    parser.add_argument("--fields", nargs='?', default="uri,label")
+    parser.add_argument("--fields", nargs='?', default="uri,label,score,role")
     parser.add_argument("--char_emb_size", nargs='?', type=int, default=128)
     parser.add_argument("--batch_size", nargs='?', type=int, default=1000)
     parser.set_defaults(reduce_params=True)
@@ -129,11 +132,14 @@ if __name__ == '__main__':
     path = args.path if args.path else "/linking"
     port = int(args.port) if args.port else 5000
 
-    if not os.path.exists(args.model):
-        print('Model file does not exist: {0}'.format(args.model))
-        parser.print_help(file=sys.stderr)
-        sys.exit(1)
-    encoder = load_model(args.model)
+    # if not os.path.exists(args.model):
+    #     print('Model file does not exist: {0}'.format(args.model))
+    #     parser.print_help(file=sys.stderr)
+    #     sys.exit(1)
+    model_fnames = args.model.split(',')
+    assert len(model_fnames) == 2
+    mention_encoder = load_model(model_fnames[0])
+    label_encoder = load_model(model_fnames[1])
 
     labels_by_source = {}
     uri_infos_by_source = {}
@@ -152,11 +158,11 @@ if __name__ == '__main__':
                 return_jsonl=True)
             assert len(labels) == len(uri_infos)
             X = labels_to_matrix(labels, args.maxlen)
-            logging.info('Source {0}, matrix {1}'.format(source, X.shape))
+            logging.info('Source {0}, matrix shape {1}, matrix data\n{2}'.format(source, X.shape, X))
             labels_by_source[source] = labels
             uri_infos_by_source[source] = uri_infos
             matrix_by_source[source] = X
-            X_enc = encoder.predict(X, batch_size=args.batch_size)
+            X_enc = label_encoder.predict(X, batch_size=args.batch_size)
             vectors_by_source[source] = X_enc
 
     api.add_resource(GetBest, path + '/get_best')
