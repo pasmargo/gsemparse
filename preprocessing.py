@@ -9,7 +9,7 @@ import sys
 import time
 
 chars = string.ascii_lowercase + string.digits + string.punctuation
-char_indices = dict((c, i) for i, c in enumerate(chars))
+char_indices = dict((c, i + 1) for i, c in enumerate(chars))
 
 logging.basicConfig(level=logging.INFO)
 
@@ -64,9 +64,9 @@ def load_labels(fname, ntrain=1000, lowercase=True, return_jsonl=False):
     return labels
 
 def labels_to_matrix(labels, maxlen=16):
-    X = np.ones((len(labels), maxlen), dtype=np.int32) * -1
+    X = np.zeros((len(labels), maxlen), dtype=np.int32)
     for i, label in enumerate(labels):
         for j, char in enumerate(label[:maxlen]):
-            X[i, (maxlen - 1 - j)] = char_indices.get(char, -1)
+            X[i, (maxlen - 1 - j)] = char_indices.get(char, 0)
     return X
 

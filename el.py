@@ -61,6 +61,12 @@ mentions = [m.strip().lower() for m in args.queries]
 # mentions = ['colour']
 M = labels_to_matrix(mentions)
 
+# define parameter according to linking.py
+num_filters = (args.char_emb_size, args.char_emb_size * 2, args.char_emb_size * 4)
+filter_lengths = (3, 3, 3)
+subsamples = (1, 1, 1)
+pool_lengths = (2, 2, 2)
+
 inputs, outputs, char_emb_x = make_encoder(
     args.maxlen,
     args.char_emb_size,

@@ -14,7 +14,7 @@ import numpy as np
 import os
 import sys
 
-def ground_mention(mention, source='dbr', nbest=10):
+def ground_mention(mention, source='dbr', nbest=10, port=5000):
     """
     mention might be a list of words that form a single mention,
     or a string with a single word.
@@ -25,8 +25,8 @@ def ground_mention(mention, source='dbr', nbest=10):
         mention = '&'.join('mention='+m for m in mention)
     else:
         mention = 'mention={0}'.format(mention)
-    url = "http://127.0.0.1:5000/linking/get_best?source={0}&{1}".format(
-        source, mention)
+    url = "http://127.0.0.1:5000/linking/get_best?source={0}&{1}&nbest={2}".format(
+        source, mention, nbest)
     request_result = requests.get(url)
     result = request_result.json()
     return result
@@ -34,7 +34,7 @@ def ground_mention(mention, source='dbr', nbest=10):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", help="Host name (default: localhost)")
-    parser.add_argument("--port", help="Port (default: 5000)")
+    parser.add_argument("--port", help="Port (default: 5000)", default=5000)
     parser.add_argument("--path", help="Path (default: /linker)")
     parser.add_argument("--nbest", nargs='?', type=int, default=10)
     parser.add_argument("--mention", nargs='+',
@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     mention = ' '.join(args.mention)
     logging.info('Mention to ground: {0}'.format(mention))
-    results = ground_mention(args.mention, args.source)
+    results = ground_mention(args.mention, args.source, nbest=args.nbest)
     for result in results:
         print(result)
 

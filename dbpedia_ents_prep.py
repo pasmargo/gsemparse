@@ -19,8 +19,12 @@ infobox_fname = sys.argv[1]
 labels_fname = sys.argv[2]
 context_fname = sys.argv[3]
 
+uris = set()
 with bz2.BZ2File(infobox_fname, 'r') as fin_info:
-    uris = set(triplet_str.strip().split()[0] for triplet_str in fin_info)
+    for triplet_str in fin_info:
+        triplet_str = triplet_str.decode('utf-8')
+        triplet_str = triplet_str.strip().split()[0]
+        uris.add(triplet_str)
 uris = set(shorten_uri(uri) for uri in uris)
 logging.info('Read {0} unique uris from {1}'.format(len(uris), infobox_fname))
 
@@ -28,6 +32,7 @@ info = defaultdict(lambda: {'uri': '', 'surf': '', 'label': '', 'context': ''})
 
 with bz2.BZ2File(labels_fname, 'r') as fin_labels:
     for triplet_str in fin_labels:
+        triplet_str = triplet_str.decode('utf-8') # cast byte type data to string
         triplet_str = triplet_str.strip()
         if 'rdf-schema#label' in triplet_str and triplet_str.endswith('"@en .'):
             uri = get_short_uri(triplet_str)
@@ -36,6 +41,7 @@ with bz2.BZ2File(labels_fname, 'r') as fin_labels:
 
 with bz2.BZ2File(context_fname, 'r') as fin_context:
     for triplet_str in fin_context:
+        triplet_str = triplet_str.decode('utf-8') # cast byte type data to string
         triplet_str = triplet_str.strip()
         if 'nif-core#isString' in triplet_str and triplet_str.endswith('" .'):
             uri_long = triplet_str.split()[0][:-26]

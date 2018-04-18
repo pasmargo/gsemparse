@@ -69,10 +69,12 @@ if __name__ == '__main__':
     np.random.shuffle(ids)
     X = X[ids]
     
-    split = int(args.ntrain * .8)
+    #split = int(args.ntrain * .8) # int(-1 * 0.8) = 0
+    split = int(len(labels) * .8)
     X_train = X[:split]
     X_test = X[split:]
-    
+    logging.info('Using {0} data for train, {1} data for validation.'.format(len(X_train), len(X_test)))    
+ 
     num_filters = (args.char_emb_size, args.char_emb_size * 2, args.char_emb_size * 4)
     filter_lengths = (3, 3, 3)
     subsamples = (1, 1, 1)
@@ -101,6 +103,7 @@ if __name__ == '__main__':
     autoencoder.summary()
     
     loss_out = None
+    siamese = None
     inputs = []
     if args.loss_type == 'i1i1-i1i2':
         loss_out = Lambda(
@@ -204,4 +207,8 @@ if __name__ == '__main__':
 
     encoder.save(model_name + '.h5')
     print('Encoder model wrote to {0}.h5'.format(model_name))
+    if siamese is not None:
+        siamese_model_name = model_name + '_siamese'
+        siamese.save(siamese_model_name + '.h5')
+        print('Siamese model wrote to {0}.h5'.format(siamese_model_name))
 
