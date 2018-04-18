@@ -24,6 +24,8 @@ def embed_id(kb_id):
     result = request_result.json()
     return result
 
+# print(embed_id('dbo:Island'))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", help="Knowledge base identifier")

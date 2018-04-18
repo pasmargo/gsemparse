@@ -127,6 +127,24 @@ python link_client.py --mention sibling --source onto_rel
 python link_client.py --mention mountain --source onto_type
 ```
 
+## Embedding KB identifiers into vectors
+
+First, we need to start the server:
+
+```
+python id2emb_api.py --targets data/dbpedia_ontology_types.labels.jsonl
+```
+
+This will start the server, loading the jsonl files with URIs and labels, and GoogleNews vector (can be changed).
+
+You can obtain 300-dim vectors for KB identifiers (URIs) doing:
+
+```
+python id2emb_client.py --id dbo:Island
+```
+
+(if the URI doesn't exist, then the vector is all zeros).
+
 # (old) Review of resources that might be useful to train a linker.
 
 * In DBpedia ontology there are ontological types and relations (30K in total).
