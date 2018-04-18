@@ -5,12 +5,12 @@
   * A strong regularization,
   * The activation function (tanh),
   * A flawed loss function.
-* Implement the ASK l-DCS expression in transducers repository.
 * When the pipeline is completed, return to the entity linker for further refinements. E.g.:
   * Create an evaluation method for the linker. For example, use all keywords from SQA
     and all URIs, and measure the coverage@10 from all keywords.
   * Siamese network for similarity measurements using "Learning to Rank" techniques.
 * Write grammar for SQA challenge according to (their templates)[https://github.com/AskNowQA/LC-QuAD/blob/develop/templates.py]:
+  * It needs to be refined to include queries of the type `?x0 rdf:type Class`.
 * Improve sampling for linking routines:
   * We can create meaningful data augmentation by corrupting
     labels in a natural way (e.g. misspellings, shortening, cropping, etc.).
